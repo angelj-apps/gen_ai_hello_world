@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "gen_ai_hello_world",
-  description: "HW1 Next.js hello world for Gen UI",
+  title: "Boston coffee spots",
+  description: "HW2 list page fetched from Supabase",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -22,6 +22,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
