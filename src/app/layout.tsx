@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Boston coffee spots",
-  description: "HW2 list page fetched from Supabase",
+  description: "HW2 spots list + HW3 auth, profiles, and gated Favorites",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

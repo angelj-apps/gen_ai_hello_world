@@ -1,4 +1,12 @@
 import { getSupabaseClient, getSupabaseKey, type Spot } from "@/lib/supabase";
+import { SiteNav } from "@/components/SiteNav";
+import { createClient } from "@/lib/supabase/server";
+import { hasSupabaseEnv } from "@/lib/supabase/env";
+import {
+  profileNeedsNames,
+  type Profile,
+} from "@/lib/supabase/types";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +18,8 @@ function MissingEnv() {
         Add <code className="font-mono">NEXT_PUBLIC_SUPABASE_URL</code> and{" "}
         <code className="font-mono">NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY</code> to{" "}
         <code className="font-mono">.env.local</code>, then run the SQL in{" "}
-        <code className="font-mono">supabase/spots.sql</code>.
+        <code className="font-mono">supabase/spots.sql</code> and{" "}
+        <code className="font-mono">supabase/profiles.sql</code>.
       </p>
     </div>
   );
@@ -24,6 +33,7 @@ export default async function Home() {
 
   let spots: Spot[] = [];
   let fetchError: string | null = null;
+  let needsProfile = false;
 
   if (url && anonKey) {
     const supabase = getSupabaseClient();
@@ -39,20 +49,58 @@ export default async function Home() {
     }
   }
 
+  if (hasSupabaseEnv()) {
+    try {
+      const authClient = await createClient();
+      const {
+        data: { user },
+      } = await authClient.auth.getUser();
+
+      if (user) {
+        const { data: profile } = await authClient
+          .from("profiles")
+          .select(
+            "id, first_name, last_name, avatar_url, favorite_drink, updated_at",
+          )
+          .eq("id", user.id)
+          .maybeSingle();
+
+        needsProfile = profileNeedsNames((profile as Profile | null) ?? null);
+      }
+    } catch {
+      // Ignore auth errors on the public home page.
+    }
+  }
+
   return (
     <div className="flex min-h-full flex-col items-center bg-zinc-50 px-6 py-16 dark:bg-black">
       <main className="flex w-full max-w-2xl flex-col gap-8">
+        <SiteNav />
         <header className="flex flex-col gap-2">
           <p className="text-sm font-medium tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
-            HW2
+            HW2 + HW3
           </p>
           <h1 className="text-4xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">
             Boston coffee spots
           </h1>
           <p className="text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Rows loaded from a Supabase <code className="font-mono text-base">spots</code> table.
+            Rows loaded from a Supabase <code className="font-mono text-base">spots</code>{" "}
+            table. Sign in for Profile and the gated Favorites route.
           </p>
         </header>
+
+        {needsProfile ? (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-amber-950 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+            <p className="font-medium">Welcome — finish your profile</p>
+            <p className="mt-1 text-sm opacity-80">
+              Your first or last name is still empty.{" "}
+              <Link href="/profile" className="underline underline-offset-2">
+                Add your name
+              </Link>{" "}
+              (and optionally a photo).
+            </p>
+          </div>
+        ) : null}
 
         {!url || !anonKey ? <MissingEnv /> : null}
 
