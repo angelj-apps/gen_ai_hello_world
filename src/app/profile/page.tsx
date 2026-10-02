@@ -59,11 +59,8 @@ export default async function ProfilePage() {
         <main className="flex w-full max-w-2xl flex-col gap-8">
           <SiteNav />
           <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-red-950 dark:border-red-900 dark:bg-red-950/40 dark:text-red-100">
-            <p className="font-medium">Could not load or create your profile.</p>
-            <p className="mt-1 text-sm opacity-80">
-              Run <code className="font-mono">supabase/profiles.sql</code> in the
-              Supabase SQL editor, then refresh.
-            </p>
+            <p className="font-medium">Could not load your profile.</p>
+            <p className="mt-1 text-sm opacity-80">Try signing out and back in.</p>
           </div>
         </main>
       </div>

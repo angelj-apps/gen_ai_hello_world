@@ -9,11 +9,12 @@ create table if not exists public.spots (
 alter table public.spots enable row level security;
 
 drop policy if exists "Public can read spots" on public.spots;
+drop policy if exists "Signed-in users can read spots" on public.spots;
 
-create policy "Public can read spots"
+create policy "Signed-in users can read spots"
   on public.spots
   for select
-  to anon, authenticated
+  to authenticated
   using (true);
 
 insert into public.spots (name, neighborhood, note)

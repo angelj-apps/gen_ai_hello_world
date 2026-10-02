@@ -2,7 +2,7 @@
 
 Next.js app for Gen UI.
 
-- **HW2:** loads coffee spots from a Supabase `spots` table.
+- **HW2:** loads coffee spots from a Supabase `spots` table (signed-in users only).
 - **HW3:** Google OAuth, `profiles` table + trigger, Profile page (name + photo), gated `/favorites` route.
 
 ## Environment variables
@@ -38,7 +38,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 | Route | Purpose |
 | --- | --- |
-| `/` | Public spots list |
+| `/` | Spots list (sign-in required) |
 | `/login` | Google sign-in |
 | `/auth/callback` | OAuth code exchange (redirectTo must be exactly this path) |
 | `/profile` | Edit first/last name + upload photo |
