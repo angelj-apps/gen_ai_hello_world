@@ -13,8 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Boston coffee spots",
-  description: "HW2 spots list + HW3 auth, profiles, and gated Favorites",
+  title: "Weekend captions",
+  description:
+    "AI captions for NYC and Boston weekend spots — generate, vote, and climb the dorm feed",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

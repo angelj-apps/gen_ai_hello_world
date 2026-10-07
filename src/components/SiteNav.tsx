@@ -21,7 +21,13 @@ export async function SiteNav() {
     <nav className="flex w-full max-w-2xl flex-wrap items-center justify-between gap-3 border-b border-zinc-200 pb-4 dark:border-zinc-800">
       <div className="flex flex-wrap items-center gap-4 text-sm font-medium text-zinc-700 dark:text-zinc-300">
         <Link href="/" className="hover:text-zinc-950 dark:hover:text-zinc-50">
-          Spots
+          Feed
+        </Link>
+        <Link
+          href="/generate"
+          className="hover:text-zinc-950 dark:hover:text-zinc-50"
+        >
+          Generate
         </Link>
         <Link
           href="/favorites"

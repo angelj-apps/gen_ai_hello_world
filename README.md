@@ -1,47 +1,61 @@
-# gen_ai_hello_world
+# Weekend captions
 
-Next.js app for Gen UI.
+Next.js app for Gen UI. Logged-in users generate AI captions for NYC and Boston weekend spots, store the prompt + caption, and upvote/downvote the feed.
 
-- **HW2:** loads coffee spots from a Supabase `spots` table (signed-in users only).
-- **HW3:** Google OAuth, `profiles` table + trigger, Profile page (name + photo), gated `/favorites` route.
+## Why this exists (for Sam)
+
+Sam is chronically online, new to the East Coast (NYC + Boston), and looks for a daily dorm ritual. The feed gives a reason to open the site every day: fresh captions, vote wars, and a place to dump the weird Saturday feeling into something shareable. Popular content comes from ranking — funny captions float up. Crackd.ai is stronger when generation and rating live in one loop; this app does the same with captions instead of photos.
 
 ## Environment variables
 
-Copy `.env.example` to `.env.local` (inside this app folder) and add your Supabase project URL and publishable key. Do not commit real keys.
+Copy `.env.example` to `.env.local` and fill in:
 
-Also set the same variables in Vercel for production.
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `OPENROUTER_API_KEY` (server-only — also add this in Vercel)
+- optional: `OPENROUTER_MODEL` (defaults to `openrouter/auto`)
+- If generation fails with a guardrails message, open [OpenRouter Guardrails](https://openrouter.ai/workspaces/default/guardrails) and allow at least one model.
+
+Do not commit real keys.
 
 ```bash
 npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+## Supabase setup
 
-## Supabase setup (HW3)
+Run these in the SQL editor, in order if you are new:
 
-1. In the Supabase SQL editor, run `supabase/spots.sql` (if you have not already) and `supabase/profiles.sql`.
-2. That creates:
-   - `public.profiles` with nullable `first_name` / `last_name` (plus optional `avatar_url`, `favorite_drink`)
-   - a trigger on `auth.users` that inserts a profile on first signup
-   - a public `avatars` storage bucket (photo URL only in the DB — no binary blobs)
-3. Authentication → URL configuration → add redirect URLs:
-   - `http://localhost:3000/auth/callback`
-   - `https://YOUR_VERCEL_DOMAIN.vercel.app/auth/callback`
-4. Create a Google OAuth client in Google Cloud Console:
-   - Application type: Web
-   - Authorized redirect URI: use the **Callback URL (for OAuth)** shown in Supabase → Authentication → Providers → Google (looks like `https://YOUR_PROJECT.supabase.co/auth/v1/callback`)
-5. Paste the Google Client ID and Client Secret into Supabase → Authentication → Providers → Google and enable it.
-6. Turn off Vercel Deployment Protection so Incognito can load the site.
+1. `supabase/spots.sql` (or `spots-auth-read.sql` if spots already exists)
+2. `supabase/profiles.sql`
+3. **`supabase/hw4.sql`** — generations, votes, score trigger, strict RLS
+
+### RLS summary (HW4)
+
+| Table | Read | Write |
+| --- | --- | --- |
+| `spots` | authenticated | none from clients |
+| `profiles` | authenticated | insert/update own row |
+| `generations` | authenticated | insert own row |
+| `votes` | own rows only | insert/update/delete own rows |
+
+`generations.score` is updated by a `security definer` trigger when votes change. Clients cannot update scores directly.
 
 ## Routes
 
 | Route | Purpose |
 | --- | --- |
-| `/` | Spots list (sign-in required) |
+| `/` | Ranked caption feed + voting (sign-in required) |
+| `/generate` | Create an AI caption for a spot (sign-in required) |
 | `/login` | Google sign-in |
-| `/auth/callback` | OAuth code exchange (redirectTo must be exactly this path) |
-| `/profile` | Edit first/last name + upload photo |
-| `/favorites` | Gated member UI (sign-in required) |
+| `/auth/callback` | OAuth code exchange |
+| `/profile` | Name + photo |
+| `/favorites` | Gated shortlist from earlier assignments |
 
-After login, if first/last name are empty, the home page and Profile prompt you to fill them in.
+## Deploy
+
+1. Push to GitHub / Vercel.
+2. Set the same env vars on Vercel (including `OPENROUTER_API_KEY`).
+3. Turn off Deployment Protection so Incognito works.
+4. Submit the **commit-specific** Vercel URL.
