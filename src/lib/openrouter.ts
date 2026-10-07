@@ -39,8 +39,12 @@ export async function generateCaptionText(systemPrompt: string, userPrompt: stri
     body: JSON.stringify({
       model,
       temperature: 0.9,
-      // Optional vibe makes prompts longer; give free/thinking models room.
-      max_tokens: 256,
+      // Reasoning tokens share this budget. Keep total high and cap reasoning.
+      max_tokens: 1024,
+      reasoning: {
+        effort: "low",
+        max_tokens: 128,
+      },
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
@@ -63,6 +67,13 @@ export async function generateCaptionText(systemPrompt: string, userPrompt: stri
         "OpenRouter blocked this model via workspace guardrails. Open https://openrouter.ai/workspaces/default/guardrails and allow at least one model.",
       );
     }
+    // Some models reject the reasoning object — retry once without it.
+    if (
+      apiMessage.toLowerCase().includes("reasoning") ||
+      response.status === 400
+    ) {
+      return generateCaptionTextPlain(apiKey, model, systemPrompt, userPrompt);
+    }
     throw new Error(`OpenRouter error: ${apiMessage}`);
   }
 
@@ -70,6 +81,10 @@ export async function generateCaptionText(systemPrompt: string, userPrompt: stri
   const raw = extractMessageContent(choice?.message?.content);
 
   if (!raw) {
+    if (choice?.finish_reason === "length") {
+      // Still empty after reasoning budget — retry with a bigger visible budget.
+      return generateCaptionTextPlain(apiKey, model, systemPrompt, userPrompt);
+    }
     const reason = choice?.finish_reason
       ? ` (finish_reason: ${choice.finish_reason})`
       : "";
@@ -80,6 +95,63 @@ export async function generateCaptionText(systemPrompt: string, userPrompt: stri
 
   if (!text) {
     throw new Error("OpenRouter returned an empty caption.");
+  }
+
+  return text;
+}
+
+async function generateCaptionTextPlain(
+  apiKey: string,
+  model: string,
+  systemPrompt: string,
+  userPrompt: string,
+) {
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer":
+        process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
+        "http://localhost:3000",
+      "X-Title": "Weekend captions",
+    },
+    body: JSON.stringify({
+      model,
+      temperature: 0.9,
+      max_tokens: 1024,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+    }),
+  });
+
+  const payload = (await response.json()) as {
+    choices?: {
+      message?: { content?: unknown };
+      finish_reason?: string | null;
+    }[];
+    error?: { message?: string };
+  };
+
+  if (!response.ok) {
+    throw new Error(
+      `OpenRouter error: ${payload.error?.message ?? `HTTP ${response.status}`}`,
+    );
+  }
+
+  const choice = payload.choices?.[0];
+  const raw = extractMessageContent(choice?.message?.content);
+  const text = raw ? cleanCaption(raw) : "";
+
+  if (!text) {
+    const reason = choice?.finish_reason
+      ? ` (finish_reason: ${choice.finish_reason})`
+      : "";
+    throw new Error(
+      `OpenRouter returned an empty caption.${reason} Try a non-reasoning model in OPENROUTER_MODEL.`,
+    );
   }
 
   return text;

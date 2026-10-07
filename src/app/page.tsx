@@ -107,9 +107,6 @@ export default async function Home() {
       <main className="flex w-full max-w-2xl flex-col gap-8">
         <SiteNav />
         <header className="flex flex-col gap-3">
-          <p className="text-sm font-medium tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
-            Daily for dorm explorers
-          </p>
           <h1 className="text-4xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">
             Weekend captions
           </h1>
