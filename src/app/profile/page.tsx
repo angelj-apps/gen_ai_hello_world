@@ -75,7 +75,7 @@ export default async function ProfilePage() {
         <SiteNav />
         <header className="flex flex-col gap-2">
           <p className="text-sm font-medium tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
-            HW3
+            Account
           </p>
           <h1 className="text-4xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">
             Profile
@@ -95,8 +95,8 @@ export default async function ProfilePage() {
 
         <p className="text-sm text-zinc-500 dark:text-zinc-400">
           Signed in as {user.email}.{" "}
-          <Link href="/favorites" className="underline underline-offset-2">
-            Open Favorites
+          <Link href="/library" className="underline underline-offset-2">
+            Open library
           </Link>
         </p>
       </main>

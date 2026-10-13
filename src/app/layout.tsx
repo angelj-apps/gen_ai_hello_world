@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Weekend captions",
+  title: "Little Tools",
   description:
-    "AI captions for NYC and Boston weekend spots — generate, vote, and climb the dorm feed",
+    "Turn a beginner Python goal into a tiny tool card — generate, vote, save, and practice",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

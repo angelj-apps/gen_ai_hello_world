@@ -1,14 +1,21 @@
 import Link from "next/link";
+import { AttemptFirstLearn } from "@/components/AttemptFirstLearn";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { SiteNav } from "@/components/SiteNav";
-import { VoteButtons } from "@/components/VoteButtons";
+import { ToolCardView } from "@/components/ToolCardView";
+import {
+  canClarifyCard,
+  canEditToolCardCode,
+  loadClarificationsByCardIds,
+} from "@/lib/clarifications";
+import { getHorizon } from "@/lib/concepts";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import {
   profileNeedsNames,
-  type GenerationCard,
   type Profile,
-  type Vote,
+  type ToolCard,
+  type ToolVote,
 } from "@/lib/supabase/types";
 
 export const dynamic = "force-dynamic";
@@ -20,13 +27,14 @@ function SignedOutGate() {
         <SiteNav />
         <header className="flex flex-col gap-2">
           <p className="text-sm font-medium tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
-            Members only
+            Little Tools
           </p>
           <h1 className="text-4xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">
-            Weekend captions
+            Learn Python one small tool at a time
           </h1>
           <p className="text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Sign in to generate AI captions for NYC and Boston spots and rate the feed.
+            See what you can learn to do, ask “How do I …?”, try first, and open
+            syntax only when you need it.
           </p>
         </header>
 
@@ -45,7 +53,11 @@ function SignedOutGate() {
   );
 }
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ card?: string }>;
+}) {
   if (!hasSupabaseEnv()) {
     return <SignedOutGate />;
   }
@@ -59,6 +71,8 @@ export default async function Home() {
     return <SignedOutGate />;
   }
 
+  const params = await searchParams;
+
   const { data: profile } = await supabase
     .from("profiles")
     .select("id, first_name, last_name, avatar_url, favorite_drink, updated_at")
@@ -67,59 +81,71 @@ export default async function Home() {
 
   const needsProfile = profileNeedsNames((profile as Profile | null) ?? null);
 
-  const { data: generations, error } = await supabase
-    .from("generations")
-    .select(
-      "id, caption, prompt, score, created_at, spots!spot_id(name, neighborhood), profiles!user_id(first_name, last_name)",
-    )
-    .order("score", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(40);
+  const { data: learnedRows, error: learnedError } = await supabase
+    .from("learned_concepts")
+    .select("concept_id, learned_at")
+    .eq("user_id", user.id)
+    .order("learned_at", { ascending: false });
 
-  const cards: GenerationCard[] = (generations ?? []).map((row) => {
-    const spot = Array.isArray(row.spots) ? row.spots[0] : row.spots;
-    const author = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
-    return {
-      id: row.id,
-      caption: row.caption,
-      prompt: row.prompt,
-      score: row.score,
-      created_at: row.created_at,
-      spots: spot ?? null,
-      profiles: author ?? null,
-    };
-  });
+  // If concepts.sql not run yet, start at the starter horizon.
+  const learnedIds = learnedError
+    ? []
+    : (learnedRows ?? []).map((r) => r.concept_id as string);
+  const lastConceptId = learnedIds[0] ?? null;
+  const horizon = getHorizon(learnedIds, lastConceptId);
 
-  const { data: myVotes } = await supabase
-    .from("votes")
-    .select("generation_id, value")
-    .eq("user_id", user.id);
+  let latestCard: ToolCard | null = null;
+  if (params.card) {
+    const { data } = await supabase
+      .from("tool_cards")
+      .select("*")
+      .eq("id", params.card)
+      .maybeSingle();
+    latestCard = (data as ToolCard | null) ?? null;
+  }
 
-  const voteMap = new Map(
-    ((myVotes as Vote[] | null) ?? []).map((vote) => [
-      vote.generation_id,
-      vote.value,
-    ]),
-  );
+  let myVote: number | null = null;
+  let saved = false;
+  if (latestCard) {
+    const [{ data: vote }, { data: save }] = await Promise.all([
+      supabase
+        .from("tool_votes")
+        .select("tool_card_id, value")
+        .eq("user_id", user.id)
+        .eq("tool_card_id", latestCard.id)
+        .maybeSingle(),
+      supabase
+        .from("saved_tools")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("tool_card_id", latestCard.id)
+        .maybeSingle(),
+    ]);
+    myVote = (vote as ToolVote | null)?.value ?? null;
+    saved = Boolean(save);
+  }
+
+  const cardClarifications = latestCard
+    ? (
+        await loadClarificationsByCardIds(supabase, user.id, [latestCard.id])
+      ).get(latestCard.id) ?? []
+    : [];
 
   return (
     <div className="flex min-h-full flex-col items-center bg-zinc-50 px-6 py-16 dark:bg-black">
       <main className="flex w-full max-w-2xl flex-col gap-8">
         <SiteNav />
         <header className="flex flex-col gap-3">
+          <p className="text-sm font-medium tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
+            Little Tools
+          </p>
           <h1 className="text-4xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">
-            Weekend captions
+            Learn
           </h1>
           <p className="text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Chronically online takes on NYC and Boston coffee runs and weekend wanders.
-            Generate one, vote on the rest, come back tomorrow for new posts.
+            Pick a capability, make it your “How do I …?” question, attempt
+            first, then open syntax when you’re stuck.
           </p>
-          <Link
-            href="/generate"
-            className="inline-flex w-fit items-center justify-center rounded-xl bg-zinc-950 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200"
-          >
-            Generate a caption
-          </Link>
         </header>
 
         {needsProfile ? (
@@ -129,71 +155,37 @@ export default async function Home() {
               Your first or last name is still empty.{" "}
               <Link href="/profile" className="underline underline-offset-2">
                 Add your name
-              </Link>{" "}
-              so the feed can credit you.
+              </Link>
+              .
             </p>
           </div>
         ) : null}
 
-        {error ? (
-          <p className="text-zinc-600 dark:text-zinc-400">Could not load captions.</p>
-        ) : null}
-
-        {!error && cards.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-zinc-300 px-5 py-8 text-center dark:border-zinc-700">
-            <p className="text-zinc-700 dark:text-zinc-300">
-              No captions yet. Be the first to generate one.
+        {latestCard ? (
+          <section className="flex flex-col gap-3">
+            <h2 className="text-lg font-semibold text-zinc-950 dark:text-zinc-50">
+              Your tool card
+            </h2>
+            <ToolCardView
+              card={latestCard}
+              myVote={myVote}
+              saved={saved}
+              clarifications={cardClarifications}
+              canClarify={canClarifyCard(latestCard.user_id, user.id)}
+              canEditCode={canEditToolCardCode(latestCard.user_id, user.id)}
+            />
+            <p className="text-sm text-zinc-500">
+              Next ideas below refresh from what you just learned.
             </p>
-            <Link
-              href="/generate"
-              className="mt-3 inline-block text-sm underline underline-offset-2"
-            >
-              Open generate
-            </Link>
-          </div>
+          </section>
         ) : null}
 
-        <ul className="grid gap-4">
-          {cards.map((card) => {
-            const author = [card.profiles?.first_name, card.profiles?.last_name]
-              .filter(Boolean)
-              .join(" ");
-            return (
-              <li
-                key={card.id}
-                className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
-                      {card.spots?.neighborhood ?? "NYC / Boston"}
-                      {card.spots?.name ? ` · ${card.spots.name}` : ""}
-                    </p>
-                    <p className="mt-2 text-xl font-semibold leading-8 text-zinc-950 dark:text-zinc-50">
-                      {card.caption}
-                    </p>
-                    <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">
-                      {author || "Anonymous"} · prompt saved with this post
-                    </p>
-                    <details className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-                      <summary className="cursor-pointer select-none">
-                        View prompt
-                      </summary>
-                      <pre className="mt-2 whitespace-pre-wrap rounded-xl bg-zinc-50 p-3 font-mono text-xs text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
-                        {card.prompt}
-                      </pre>
-                    </details>
-                  </div>
-                  <VoteButtons
-                    generationId={card.id}
-                    score={card.score}
-                    myVote={voteMap.get(card.id) ?? null}
-                  />
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+        <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
+          <AttemptFirstLearn
+            horizon={horizon}
+            learnedCount={learnedIds.length}
+          />
+        </div>
       </main>
     </div>
   );

@@ -28,7 +28,7 @@ export default async function LoginPage({
         <SiteNav />
         <header className="flex flex-col gap-2">
           <p className="text-sm font-medium tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
-            HW3
+            Little Tools
           </p>
           <h1 className="text-4xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">
             Sign in
@@ -55,7 +55,7 @@ export default async function LoginPage({
           <p className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
             Or go back to{" "}
             <Link href="/" className="underline underline-offset-2">
-              coffee spots
+              Little Tools
             </Link>
             .
           </p>

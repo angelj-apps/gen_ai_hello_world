@@ -2,15 +2,15 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { submitVote } from "@/app/actions/vote";
+import { submitToolVote } from "@/app/actions/vote";
 
 type Props = {
-  generationId: string;
+  toolCardId: string;
   score: number;
   myVote: number | null;
 };
 
-export function VoteButtons({ generationId, score, myVote }: Props) {
+export function VoteButtons({ toolCardId, score, myVote }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -18,7 +18,7 @@ export function VoteButtons({ generationId, score, myVote }: Props) {
   function vote(value: 1 | -1) {
     setError(null);
     startTransition(async () => {
-      const result = await submitVote(generationId, value);
+      const result = await submitToolVote(toolCardId, value);
       if (result.error) {
         setError(result.error);
         return;
