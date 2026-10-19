@@ -1,10 +1,21 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import {
-  createPracticeSession,
+  createPracticeFromSkills,
+  sharePracticeToExplore,
   submitPracticeAnswer,
 } from "@/app/actions/practice";
+import {
+  MiniPythonTerminal,
+  type MiniPythonTerminalHandle,
+} from "@/components/MiniPythonTerminal";
+
+export type PracticeSkillOption = {
+  conceptId: string;
+  label: string;
+  skillPoints: number;
+};
 
 type Session = {
   attemptId: string;
@@ -12,26 +23,84 @@ type Session = {
   hint: string;
   sampleSolution: string;
   explanation: string;
-  tools: { id: string; title: string; code: string; what_it_does: string }[];
+  conceptIds: string[];
+  skills: { id: string; title: string; what_it_does: string; code: string }[];
 };
 
-export function PracticeClient() {
+type Props = {
+  skills: PracticeSkillOption[];
+};
+
+function briefPracticeHint(session: Session): {
+  text: string;
+  syntax: string[];
+} {
+  const raw = session.hint.trim();
+  const first =
+    raw.split(/(?<=[.!?])\s+/).find((part) => part.trim())?.trim() || raw;
+  const text =
+    first.length > 140 ? `${first.slice(0, 137).trimEnd()}…` : first;
+  const syntax = session.skills
+    .filter((t) => t.code.trim())
+    .map((t) => {
+      const line = t.code
+        .split("\n")
+        .map((l) => l.trim())
+        .find((l) => l && !l.startsWith("#"));
+      return line ? `${t.title}: ${line}` : "";
+    })
+    .filter(Boolean)
+    .slice(0, 3);
+  return { text, syntax };
+}
+
+export function PracticeClient({ skills }: Props) {
+  const terminalRef = useRef<MiniPythonTerminalHandle>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string[]>([]);
   const [session, setSession] = useState<Session | null>(null);
   const [answer, setAnswer] = useState("");
-  const [revealed, setRevealed] = useState(false);
   const [showHint, setShowHint] = useState(false);
-  const [showToolCode, setShowToolCode] = useState(false);
+  const [grade, setGrade] = useState<{
+    outcome: string;
+    feedback: string;
+    pointsAwarded: number;
+  } | null>(null);
+  const [sharedCardId, setSharedCardId] = useState<string | null>(null);
+  const [shareNote, setShareNote] = useState<string | null>(null);
+  const [sharing, setSharing] = useState(false);
+
+  const pickPct = Math.min(100, Math.round((selected.length / 4) * 100));
+  const correct = grade?.outcome === "correct";
+
+  function toggleSkill(id: string) {
+    setSelected((prev) =>
+      prev.includes(id)
+        ? prev.filter((x) => x !== id)
+        : [...prev, id].slice(0, 4),
+    );
+  }
+
+  function backToPick() {
+    setSession(null);
+    setGrade(null);
+    setShowHint(false);
+    setAnswer("");
+    setError(null);
+    setSharedCardId(null);
+    setShareNote(null);
+  }
 
   function start() {
     setError(null);
-    setRevealed(false);
+    setGrade(null);
     setShowHint(false);
-    setShowToolCode(false);
     setAnswer("");
+    setSharedCardId(null);
+    setShareNote(null);
     startTransition(async () => {
-      const result = await createPracticeSession();
+      const result = await createPracticeFromSkills(selected);
       if (result.error || !result.data) {
         setError(result.error ?? "Could not start practice.");
         setSession(null);
@@ -41,139 +110,334 @@ export function PracticeClient() {
     });
   }
 
-  function submit() {
-    if (!session) return;
+  function shareChallenge() {
+    if (!session || !grade || sharing || sharedCardId) return;
     setError(null);
+    setShareNote(null);
+    setSharing(true);
     startTransition(async () => {
-      const result = await submitPracticeAnswer(session.attemptId, answer);
-      if (result.error) {
-        setError(result.error);
+      const result = await sharePracticeToExplore(session.attemptId);
+      setSharing(false);
+      if (result.error || !result.cardId) {
+        setError(result.error ?? "Could not share to Explore.");
         return;
       }
-      setRevealed(true);
+      setSharedCardId(result.cardId);
+      setShareNote("Saved to your toolkit and published on Explore.");
+      try {
+        const url = `${window.location.origin}/?card=${encodeURIComponent(result.cardId)}`;
+        await navigator.clipboard.writeText(url);
+        setShareNote("Saved · published on Explore · link copied");
+      } catch {
+        // Clipboard may be blocked; publish still succeeded.
+      }
     });
   }
 
-  return (
-    <div className="flex flex-col gap-6">
-      <button
-        type="button"
-        disabled={pending}
-        onClick={start}
-        className="inline-flex w-fit items-center justify-center rounded-xl bg-zinc-950 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-60 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200"
-      >
-        {pending && !session
-          ? "Building practice…"
-          : session
-            ? "New practice task"
-            : "Start practice"}
-      </button>
+  function checkAnswer() {
+    if (!session) return;
+    setError(null);
+    startTransition(async () => {
+      let code = answer;
+      let runOutput = "";
+      let runError: string | null = null;
 
-      {error ? (
-        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-      ) : null}
+      try {
+        const ran = await terminalRef.current?.runForGrade();
+        if (ran) {
+          code = ran.code;
+          runOutput = ran.output;
+          runError = ran.error;
+          setAnswer(ran.code);
+        }
+      } catch (err) {
+        runError = err instanceof Error ? err.message : "Could not run code.";
+      }
 
-      {session ? (
-        <div className="flex flex-col gap-5 rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
-          <div>
-            <p className="text-sm font-medium tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
-              Tools for this task (roles first)
+      if (!code.trim()) {
+        setError("Write some Python in the terminal first.");
+        return;
+      }
+
+      const result = await submitPracticeAnswer(
+        session.attemptId,
+        code,
+        session.conceptIds,
+        runOutput,
+        runError,
+      );
+      if (result.error || !result.grade) {
+        setError(result.error ?? "Could not grade attempt.");
+        return;
+      }
+      setGrade(result.grade);
+    });
+  }
+
+  if (!session) {
+    return (
+      <div className="learn-fun-shell flex flex-col gap-6">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <p className="font-mono text-[11px] font-semibold tracking-[0.1em] text-accent uppercase">
+              Pick · up to 4 skills
             </p>
-            <ul className="mt-2 grid gap-2 text-sm text-zinc-600 dark:text-zinc-400">
-              {session.tools.map((t) => (
-                <li
-                  key={t.id}
-                  className="rounded-lg border border-zinc-200 px-3 py-2 dark:border-zinc-700"
-                >
-                  <p className="font-medium text-zinc-900 dark:text-zinc-100">
-                    {t.title}
-                  </p>
-                  <p className="mt-0.5">{t.what_it_does}</p>
-                  {showToolCode ? (
-                    <pre className="mt-2 overflow-x-auto rounded-lg bg-zinc-950 p-3 font-mono text-xs text-zinc-100">
-                      {t.code}
-                    </pre>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-            <button
-              type="button"
-              onClick={() => setShowToolCode((v) => !v)}
-              className="mt-2 text-sm text-zinc-500 underline underline-offset-2"
-            >
-              {showToolCode
-                ? "Hide tool syntax"
-                : "I need the tool syntax"}
-            </button>
-          </div>
-
-          <div>
-            <h2 className="text-lg font-semibold text-zinc-950 dark:text-zinc-50">
-              Your task
-            </h2>
-            <p className="mt-2 whitespace-pre-wrap text-zinc-700 dark:text-zinc-300">
-              {session.prompt}
+            <p className="font-mono text-[11px] font-semibold tracking-[0.1em] text-muted uppercase">
+              {selected.length}/4 chosen
             </p>
           </div>
-
-          <label className="flex flex-col gap-1.5 text-sm">
-            <span className="font-medium text-zinc-700 dark:text-zinc-300">
-              Your attempt
-            </span>
-            <textarea
-              rows={5}
-              value={answer}
-              onChange={(e) => setAnswer(e.target.value)}
-              placeholder="Write a few lines of Python or describe your approach…"
-              className="rounded-xl border border-zinc-300 bg-white px-3 py-2 font-mono text-sm text-zinc-950 outline-none ring-zinc-400 focus:ring-2 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+          <div
+            className="learn-fun-progress"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={4}
+            aria-valuenow={selected.length}
+            aria-label="Skills selected for practice"
+          >
+            <span
+              style={{
+                width: `${Math.max(pickPct, selected.length > 0 ? 8 : 0)}%`,
+              }}
             />
-          </label>
-
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => setShowHint((v) => !v)}
-              className="rounded-xl border border-zinc-300 px-4 py-2 text-sm text-zinc-700 dark:border-zinc-700 dark:text-zinc-200"
-            >
-              {showHint ? "Hide hint" : "Show hint"}
-            </button>
-            <button
-              type="button"
-              disabled={pending || !answer.trim()}
-              onClick={submit}
-              className="rounded-xl bg-zinc-950 px-4 py-2 text-sm font-medium text-white disabled:opacity-60 dark:bg-zinc-50 dark:text-zinc-950"
-            >
-              {pending ? "Saving…" : "I need the sample solution"}
-            </button>
           </div>
-
-          {showHint ? (
-            <p className="rounded-xl bg-zinc-50 px-4 py-3 text-sm text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
-              {session.hint}
-            </p>
-          ) : null}
-
-          {revealed ? (
-            <div className="grid gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-              <div>
-                <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                  Sample solution
-                </p>
-                <pre className="mt-2 overflow-x-auto rounded-xl bg-zinc-950 p-4 font-mono text-sm text-zinc-100">
-                  {session.sampleSolution}
-                </pre>
-              </div>
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                {session.explanation}
-              </p>
-              <p className="text-xs text-zinc-500">
-                AI-generated practice — review before trusting.
-              </p>
-            </div>
-          ) : null}
         </div>
-      ) : null}
+
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight text-ink">
+            What do you want to practice?
+          </h2>
+          <p className="mt-1.5 text-sm leading-6 text-muted">
+            Tap skills from your toolkit, then start a short challenge — earn a
+            skillpoint when you get it right.
+          </p>
+        </div>
+
+        <ul className="grid gap-2.5 sm:grid-cols-2">
+          {skills.map((skill, i) => {
+            const on = selected.includes(skill.conceptId);
+            return (
+              <li key={skill.conceptId}>
+                <button
+                  type="button"
+                  onClick={() => toggleSkill(skill.conceptId)}
+                  aria-pressed={on}
+                  data-on={on ? "true" : "false"}
+                  className="learn-fun-skill flex w-full items-start gap-3"
+                >
+                  <span
+                    className={`mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-mono text-xs font-bold ${
+                      on
+                        ? "bg-accent text-surface-raised"
+                        : "bg-accent-soft text-accent"
+                    }`}
+                  >
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-[15px] font-bold leading-snug text-ink">
+                      {skill.label}
+                    </span>
+                    <span className="mt-0.5 block font-mono text-[11px] text-muted tabular-nums">
+                      {skill.skillPoints} pts
+                    </span>
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+
+        {error ? (
+          <p className="text-sm font-medium text-danger">{error}</p>
+        ) : null}
+
+        <button
+          type="button"
+          disabled={pending || selected.length === 0}
+          onClick={start}
+          className="learn-fun-cta w-fit"
+        >
+          {pending ? "Building challenge…" : "Start challenge"}
+        </button>
+      </div>
+    );
+  }
+
+  const hint = briefPracticeHint(session);
+
+  return (
+    <div className="learn-fun-shell flex flex-col gap-6">
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <button
+            type="button"
+            disabled={pending}
+            onClick={backToPick}
+            className="text-sm font-semibold text-muted underline underline-offset-2 transition hover:text-accent disabled:opacity-50"
+          >
+            ← Change skills
+          </button>
+          <p className="font-mono text-[11px] font-semibold tracking-[0.1em] text-accent uppercase">
+            {grade
+              ? correct
+                ? "Cleared"
+                : "Try again"
+              : `Solve · ${session.skills.length} skill${session.skills.length === 1 ? "" : "s"}`}
+          </p>
+        </div>
+        <div
+          className="learn-fun-progress"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={grade ? (correct ? 100 : 55) : 40}
+          aria-label="Practice challenge progress"
+        >
+          <span style={{ width: grade ? (correct ? "100%" : "55%") : "40%" }} />
+        </div>
+      </div>
+
+      <div className="studio-fade-up flex flex-col gap-5">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight text-ink">
+            Your challenge
+          </h2>
+          <ul className="mt-2 flex flex-wrap gap-2">
+            {session.skills.map((t) => (
+              <li
+                key={t.id}
+                className="rounded-full border-2 border-line bg-surface px-3 py-1 text-xs font-bold text-ink"
+              >
+                {t.title}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 whitespace-pre-wrap text-[15px] leading-7 text-muted">
+            {session.prompt}
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <span className="text-sm font-bold text-ink">Your attempt</span>
+          <MiniPythonTerminal
+            ref={terminalRef}
+            value={answer}
+            onChange={setAnswer}
+            placeholder="Write Python, Run it, then Check…"
+          />
+        </div>
+
+        <div className="lt-practice-actions flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setShowHint((v) => !v)}
+            className="rounded-[14px] border-2 border-line bg-surface px-4 py-2.5 text-sm font-bold text-ink transition hover:border-accent hover:text-accent"
+          >
+            {showHint ? "Hide hint" : "Show hint"}
+          </button>
+          <button
+            type="button"
+            disabled={pending || !answer.trim()}
+            onClick={checkAnswer}
+            className="learn-fun-cta"
+          >
+            {pending ? "Checking…" : "Check answer"}
+          </button>
+          <button
+            type="button"
+            disabled={!grade || sharing || Boolean(sharedCardId)}
+            onClick={shareChallenge}
+            className="lt-share-btn ml-auto"
+            title={!grade ? "Check your answer before sharing" : undefined}
+          >
+            <svg
+              className="lt-share-icon"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path d="M3.4 11.2 20.1 3.6c.7-.3 1.4.4 1.1 1.1l-7.6 16.7c-.3.7-1.3.6-1.5-.2l-1.7-6.3-6.3-1.7c-.8-.2-.9-1.2-.2-1.5Z" />
+            </svg>
+            <span>
+              {sharedCardId
+                ? "Shared on Explore"
+                : sharing
+                  ? "Sharing…"
+                  : !grade
+                    ? "Check first"
+                    : "Share to Explore"}
+            </span>
+          </button>
+        </div>
+        {shareNote ? (
+          <p className="text-right text-sm font-medium text-accent">{shareNote}</p>
+        ) : null}
+
+        {showHint ? (
+          <div className="rounded-[14px] border-2 border-line bg-surface px-4 py-3">
+            <p className="text-sm text-muted">{hint.text}</p>
+            {hint.syntax.length > 0 ? (
+              <ul className="mt-2 grid gap-1">
+                {hint.syntax.map((line) => (
+                  <li
+                    key={line}
+                    className="font-mono text-[12px] font-medium text-ink"
+                  >
+                    {line}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        ) : null}
+
+        {error ? (
+          <p className="text-sm font-medium text-danger">{error}</p>
+        ) : null}
+
+        {grade ? (
+          <div
+            className={`grid gap-3 rounded-[14px] border-2 px-4 py-4 ${
+              correct
+                ? "border-accent bg-accent-soft"
+                : "border-line bg-surface"
+            }`}
+          >
+            <p className="text-lg font-bold tracking-tight text-ink">
+              {correct ? "Nice — you got it!" : "Not quite yet"}
+              {correct && grade.pointsAwarded > 0
+                ? ` · +${grade.pointsAwarded} skillpoint${grade.pointsAwarded === 1 ? "" : "s"}`
+                : ""}
+            </p>
+            <p className="text-sm text-muted">{grade.feedback}</p>
+            <div>
+              <p className="text-sm font-bold text-ink">Sample solution</p>
+              <pre className="mt-2 overflow-x-auto rounded-[12px] border-2 border-line bg-code-bg p-4 font-mono text-sm text-code-ink">
+                {session.sampleSolution}
+              </pre>
+            </div>
+            <p className="text-sm text-muted">{session.explanation}</p>
+            <div className="flex flex-wrap gap-3 pt-1">
+              <button
+                type="button"
+                disabled={pending}
+                onClick={start}
+                className="learn-fun-cta"
+              >
+                {pending ? "Building…" : "Another challenge"}
+              </button>
+              <button
+                type="button"
+                disabled={pending}
+                onClick={backToPick}
+                className="rounded-[14px] border-2 border-line bg-surface px-4 py-2.5 text-sm font-bold text-ink transition hover:border-accent hover:text-accent"
+              >
+                Pick different skills
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

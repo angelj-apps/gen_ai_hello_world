@@ -35,6 +35,7 @@ export type LearnedConcept = {
   concept_id: string;
   tool_card_id: string | null;
   learned_at: string;
+  skill_points?: number;
 };
 
 export type ClarificationKind = "custom" | "simpler" | "example";

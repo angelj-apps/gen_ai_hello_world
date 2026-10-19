@@ -19,7 +19,8 @@ Rules:
 - If the goal is too broad, still return one smaller first-step tool that helps.
 - Keep code short. No imports unless essential.
 - Never claim the code is guaranteed correct.
-- If you mention a Python term (built-in, type, etc.), define it in the same sentence in plain language.`;
+- If you mention a Python term (built-in, type, etc.), define it in the same sentence in plain language.
+- When the learner provided an attempt: the "code" field MUST be a corrected rewrite of THEIR attempt (keep their intent, names, and structure when possible). Do NOT invent a parallel unrelated demo (e.g. fruits when they wrote numbers). Explanation must name what was wrong/right in their lines, then the fix.`;
 
 export type GeneratedToolFields = {
   title: string;
@@ -86,7 +87,10 @@ export function parseToolCardJson(raw: string): GeneratedToolFields {
     example_output: asString(obj.example_output, "example_output"),
     explanation: asString(obj.explanation, "explanation"),
     when_to_use: asString(obj.when_to_use, "when_to_use"),
-    try_changing: asString(obj.try_changing, "try_changing"),
+    try_changing:
+      typeof obj.try_changing === "string" && obj.try_changing.trim()
+        ? obj.try_changing.trim()
+        : "—",
     tags: tags.length ? tags : ["python"],
     difficulty: asString(obj.difficulty ?? "beginner", "difficulty"),
   };
@@ -96,6 +100,7 @@ type GenerateOptions = {
   conceptLabel?: string;
   hintSyntax?: string;
   learnerAttempt?: string;
+  discoveryPrompt?: string;
 };
 
 export function buildToolCardUserPrompt(
@@ -112,12 +117,20 @@ export function buildToolCardUserPrompt(
   if (options?.hintSyntax) {
     lines.push(`Prefer teaching this idea/syntax: ${options.hintSyntax}.`);
   }
-  if (options?.learnerAttempt?.trim()) {
+  if (options?.discoveryPrompt?.trim()) {
     lines.push(
-      `The learner already tried this (treat it as part of the lesson, not a side note):\n${options.learnerAttempt.trim()}`,
-      `In explanation (and try_changing / examples when natural), bridge from their attempt to the correct tiny snippet: what was close, what to change. Stay encouraging. Same single concept only.`,
+      `Discovery exercise the learner just tried: ${options.discoveryPrompt.trim()}`,
+      `Keep the tool card grounded in that discovery scenario when possible.`,
     );
   }
+  if (options?.learnerAttempt?.trim()) {
+    lines.push(
+      `Learner attempt (REQUIRED starting point — rewrite THIS, do not replace with a new example):\n${options.learnerAttempt.trim()}`,
+      `CRITICAL: Put the fixed version of their attempt in "code". Keep the same task and similar variable names. In "explanation", say what they got right, what to change, and why. example_input/example_output should match their scenario. Stay encouraging. Same single concept only.`,
+    );
+  }
+  // try_changing still required by schema; keep short/neutral until a terminal exists.
+  lines.push(`For try_changing, give one brief phrase (not a long experiment).`);
   return lines.join("\n");
 }
 
@@ -173,23 +186,33 @@ export type PracticePayload = {
   explanation: string;
 };
 
-export async function generatePracticeFields(tools: {
-  title: string;
-  code: string;
-  what_it_does: string;
-}[]) {
-  const systemPrompt = `You create one short beginner Python practice task that combines the given tools.
+export async function generatePracticeFields(
+  tools: {
+    title: string;
+    code?: string;
+    what_it_does: string;
+  }[],
+) {
+  const systemPrompt = `You create one short beginner Python practice task.
 Return ONLY JSON with strings: prompt, hint, sample_solution, explanation.
-Keep the task tiny. Ask the learner to write or describe a few lines of code.
-Do not introduce unrelated concepts.`;
+
+Task design rules:
+- One coherent goal the learner can finish in a few lines (not a checklist of skills).
+- Weave the given skills in naturally. Setup that is required for another skill (e.g. making a list so you can loop) is NOT a separate requirement.
+- Do NOT write bullet lists like "1) define a list 2) use a for loop" when step 2 already implies step 1.
+- Prefer one verifiable outcome (what should print / what the program should do).
+- If several skills are selected, combine them into ONE small scenario — pick the main action; leave out redundant extras.
+- Keep it tiny. No unrelated concepts.`;
 
   const userPrompt = [
-    "Saved tools:",
-    ...tools.map(
-      (t, i) =>
-        `${i + 1}. ${t.title}: ${t.what_it_does}\nCode:\n${t.code}`,
-    ),
-    "Create one practice task that uses these tools together.",
+    "Skills available (use what fits one small task; do not turn each into its own bullet):",
+    ...tools.map((t, i) => {
+      const code = t.code?.trim()
+        ? `\nExample code:\n${t.code}`
+        : "";
+      return `${i + 1}. ${t.title}: ${t.what_it_does}${code}`;
+    }),
+    "Write prompt as a short natural-language problem (2–4 sentences max), not a skill checklist.",
   ].join("\n\n");
 
   const raw = await openRouterChat({
@@ -207,7 +230,10 @@ Do not introduce unrelated concepts.`;
   } catch {
     const start = cleaned.indexOf("{");
     const end = cleaned.lastIndexOf("}");
-    parsed = JSON.parse(cleaned.slice(start, end + 1)) as Record<string, unknown>;
+    parsed = JSON.parse(cleaned.slice(start, end + 1)) as Record<
+      string,
+      unknown
+    >;
   }
 
   return {
@@ -216,6 +242,76 @@ Do not introduce unrelated concepts.`;
     sample_solution: asString(parsed.sample_solution, "sample_solution"),
     explanation: asString(parsed.explanation, "explanation"),
   } satisfies PracticePayload;
+}
+
+export type PracticeGrade = {
+  outcome: "correct" | "partial" | "incorrect";
+  feedback: string;
+};
+
+export async function gradePracticeAttempt(input: {
+  prompt: string;
+  sampleSolution: string;
+  userAnswer: string;
+  /** Captured stdout/stderr from running the learner's code (may be empty). */
+  runOutput?: string;
+  /** Runtime error message if the program crashed. */
+  runError?: string | null;
+}) {
+  const systemPrompt = `You grade a beginner Python practice attempt.
+You MUST consider BOTH:
+1) the code the learner wrote, and
+2) the program output / runtime error from running that code (when provided).
+
+Return ONLY JSON with:
+- outcome: "correct" | "partial" | "incorrect"
+- feedback: short plain-language note (what worked, what to fix)
+
+Grading guide:
+- correct: code and observed output show the task is solved (small style differences OK)
+- partial: right idea but incomplete, wrong output, or fixable bugs
+- incorrect: does not address the task, or output clearly fails the requirement
+Be fair to beginners. If output is missing, judge from the code alone but prefer partial over correct when unsure.`;
+
+  const userPrompt = [
+    `Task:\n${input.prompt}`,
+    `Sample solution:\n${input.sampleSolution}`,
+    `Learner code:\n${input.userAnswer}`,
+    `Program output:\n${input.runOutput?.trim() ? input.runOutput : "(no output captured)"}`,
+    `Runtime error:\n${input.runError?.trim() ? input.runError : "(none)"}`,
+  ].join("\n\n");
+
+  const raw = await openRouterChat({
+    systemPrompt,
+    userPrompt,
+    maxTokens: 500,
+    temperature: 0.2,
+    title: "Little Tools Grade",
+  });
+
+  const cleaned = stripFences(raw);
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(cleaned) as Record<string, unknown>;
+  } catch {
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    parsed = JSON.parse(cleaned.slice(start, end + 1)) as Record<
+      string,
+      unknown
+    >;
+  }
+
+  const outcomeRaw = String(parsed.outcome ?? "incorrect").toLowerCase();
+  const outcome: PracticeGrade["outcome"] =
+    outcomeRaw === "correct" || outcomeRaw === "partial"
+      ? outcomeRaw
+      : "incorrect";
+
+  return {
+    outcome,
+    feedback: asString(parsed.feedback ?? "Checked your attempt.", "feedback"),
+  } satisfies PracticeGrade;
 }
 
 const CLARIFY_SYSTEM_PROMPT = `You help a beginner who is still confused about one Python tool card they just opened.

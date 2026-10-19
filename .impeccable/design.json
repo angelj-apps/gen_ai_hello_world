@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-18T20:01:00.000Z",
+  "title": "Design System: Little Tools",
+  "extensions": {
+    "colorMeta": {
+      "accent": {
+        "role": "primary",
+        "displayName": "Path Teal",
+        "canonical": "#0f766e"
+      },
+      "accent-soft": {
+        "role": "primary",
+        "displayName": "Path Mist",
+        "canonical": "#d7ebe8"
+      },
+      "bg": {
+        "role": "neutral",
+        "displayName": "Field Sage",
+        "canonical": "#eef2ef"
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#12151a"
+      },
+      "code-bg": {
+        "role": "neutral",
+        "displayName": "Terminal Night",
+        "canonical": "#1a2220"
+      }
+    },
+    "typographyMeta": {
+      "headline": { "role": "headline", "displayName": "Page title" },
+      "body": { "role": "body", "displayName": "Body" },
+      "label": { "role": "label", "displayName": "Mono meta" }
+    },
+    "motion": {
+      "fade-up": "280ms ease-out",
+      "skill-hover": "160ms ease"
+    },
+    "breakpoints": {
+      "bench-split": "900px",
+      "shell-md": "768px"
+    },
+    "narrative": {
+      "northStar": "The Focus Path",
+      "rules": [
+        "The One Accent Rule",
+        "The Bench Border Rule",
+        "The Flat-By-Default Rule",
+        "The Mono Means Meta Rule"
+      ]
+    }
+  }
+}

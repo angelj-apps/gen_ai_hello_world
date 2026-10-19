@@ -29,6 +29,7 @@ alter table public.tool_cards enable row level security;
 
 drop policy if exists "Authenticated can read tool cards" on public.tool_cards;
 drop policy if exists "Users insert own tool cards" on public.tool_cards;
+drop policy if exists "Users update own tool cards" on public.tool_cards;
 
 create policy "Authenticated can read tool cards"
   on public.tool_cards for select
@@ -40,8 +41,14 @@ create policy "Users insert own tool cards"
   to authenticated
   with check (user_id = auth.uid());
 
+create policy "Users update own tool cards"
+  on public.tool_cards for update
+  to authenticated
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
 revoke all on table public.tool_cards from anon, public;
-grant select, insert on table public.tool_cards to authenticated;
+grant select, insert, update on table public.tool_cards to authenticated;
 
 -- Votes on tool cards (one per user per card).
 create table if not exists public.tool_votes (

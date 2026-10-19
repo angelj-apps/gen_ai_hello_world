@@ -23,7 +23,7 @@ export async function toggleSaveTool(toolCardId: string) {
   if (existing) {
     const { error } = await supabase.from("saved_tools").delete().eq("id", existing.id);
     if (error) return { error: error.message, saved: true };
-    revalidatePath("/library");
+    revalidatePath("/toolkit");
     revalidatePath("/");
     revalidatePath("/explore");
     return { error: null, saved: false };
@@ -35,7 +35,7 @@ export async function toggleSaveTool(toolCardId: string) {
   });
   if (error) return { error: error.message, saved: false };
 
-  revalidatePath("/library");
+  revalidatePath("/toolkit");
   revalidatePath("/");
   revalidatePath("/explore");
   return { error: null, saved: true };

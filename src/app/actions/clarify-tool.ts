@@ -14,7 +14,7 @@ const ANSWER_MAX = 8000;
 function revalidateClarifyPaths() {
   revalidatePath("/");
   revalidatePath("/explore");
-  revalidatePath("/library");
+  revalidatePath("/toolkit");
 }
 
 function defaultQuestion(kind: ClarifyKind) {

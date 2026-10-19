@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ExploreBoard, type ExploreCardRow } from "@/components/ExploreBoard";
 import { SiteNav } from "@/components/SiteNav";
-import { ToolCardView } from "@/components/ToolCardView";
 import {
   canClarifyCard,
   canEditToolCardCode,
@@ -30,9 +30,10 @@ export default async function ExplorePage() {
   const { data: cards, error } = await supabase
     .from("tool_cards")
     .select("*")
+    .contains("tags", ["practice"])
     .order("score", { ascending: false })
     .order("created_at", { ascending: false })
-    .limit(40);
+    .limit(80);
 
   const list = (cards as ToolCard[] | null) ?? [];
 
@@ -63,57 +64,57 @@ export default async function ExplorePage() {
     clarifyableIds,
   );
 
+  const rows: ExploreCardRow[] = list.map((card) => ({
+    card,
+    myVote: voteMap.get(card.id) ?? null,
+    saved: savedSet.has(card.id),
+    clarifications: clarificationMap.get(card.id) ?? [],
+    canClarify: canClarifyCard(card.user_id, user.id),
+    canEdit: canEditToolCardCode(card.user_id, user.id),
+  }));
+
   return (
-    <div className="flex min-h-full flex-col items-center bg-zinc-50 px-6 py-16 dark:bg-black">
-      <main className="flex w-full max-w-2xl flex-col gap-8">
+    <div className="app-shell">
+      <main className="app-main">
         <SiteNav />
-        <header className="flex flex-col gap-3">
-          <h1 className="text-4xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">
+        <header className="learn-fun-shell flex flex-col gap-3">
+          <p className="font-mono text-[11px] font-semibold tracking-[0.1em] text-accent uppercase">
+            Shared practice
+          </p>
+          <h1 className="text-3xl font-bold tracking-tight text-ink sm:text-4xl">
             Explore
           </h1>
-          <p className="text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Shared tool cards ranked by community score. Function first — open
-            syntax when you need it. Vote and save keepers to your library.
-          </p>
         </header>
 
         {error ? (
-          <p className="text-zinc-600 dark:text-zinc-400">
-            Could not load tools. Run{" "}
-            <code className="font-mono text-sm">supabase/little-tools.sql</code>{" "}
-            if tables are missing.
-          </p>
+          <div className="learn-fun-shell">
+            <p className="text-muted">
+              Could not load tools. Run{" "}
+              <code className="font-mono text-sm text-ink">
+                supabase/little-tools.sql
+              </code>{" "}
+              if tables are missing.
+            </p>
+          </div>
         ) : null}
 
         {!error && list.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-zinc-300 px-5 py-8 text-center dark:border-zinc-700">
-            <p className="text-zinc-700 dark:text-zinc-300">
-              No tool cards yet. Learn your first concept.
+          <div className="learn-fun-shell text-center">
+            <p className="text-lg font-bold text-ink">
+              No shared challenges yet
             </p>
-            <Link
-              href="/"
-              className="mt-3 inline-block text-sm underline underline-offset-2"
-            >
-              Open learn
+            <p className="mt-2 text-sm text-muted">
+              Build one in Practice, then tap Share to Explore.
+            </p>
+            <Link href="/practice" className="learn-fun-cta mt-5 inline-flex">
+              Open practice
             </Link>
           </div>
         ) : null}
 
-        <ul className="grid gap-4">
-          {list.map((card) => (
-            <li key={card.id}>
-              <ToolCardView
-                card={card}
-                myVote={voteMap.get(card.id) ?? null}
-                saved={savedSet.has(card.id)}
-                syntaxCollapsed
-                clarifications={clarificationMap.get(card.id) ?? []}
-                canClarify={canClarifyCard(card.user_id, user.id)}
-                canEditCode={canEditToolCardCode(card.user_id, user.id)}
-              />
-            </li>
-          ))}
-        </ul>
+        {!error && list.length > 0 ? (
+          <ExploreBoard userId={user.id} rows={rows} />
+        ) : null}
       </main>
     </div>
   );

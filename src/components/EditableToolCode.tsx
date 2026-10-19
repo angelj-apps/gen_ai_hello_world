@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { updateToolCardCode } from "@/app/actions/update-tool-code";
+import { MiniPythonTerminal } from "@/components/MiniPythonTerminal";
 
 type Props = {
   toolCardId: string;
@@ -88,28 +89,18 @@ export function EditableToolCode({
               : null;
 
   return (
-    <div className="mt-2">
-      {editable ? (
-        <textarea
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          spellCheck={false}
-          rows={Math.min(16, Math.max(4, code.split("\n").length + 1))}
-          className="w-full resize-y overflow-x-auto rounded-xl border border-zinc-700 bg-zinc-950 p-4 font-mono text-sm leading-6 text-zinc-100 outline-none ring-zinc-500 focus:ring-2 dark:bg-black"
-          aria-label="Tool card code"
-        />
-      ) : (
-        <pre className="overflow-x-auto rounded-xl bg-zinc-950 p-4 font-mono text-sm leading-6 text-zinc-100 dark:bg-black">
-          {code}
-        </pre>
-      )}
+    <div className="mt-1">
+      <MiniPythonTerminal
+        value={code}
+        onChange={editable ? setCode : undefined}
+        readOnly={!editable}
+        placeholder="# Python"
+      />
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
         {statusLabel ? (
           <p
-            className={`text-xs ${
-              status === "error"
-                ? "text-red-600 dark:text-red-400"
-                : "text-zinc-500 dark:text-zinc-400"
+            className={`font-mono text-[11px] ${
+              status === "error" ? "text-danger" : "text-muted"
             }`}
           >
             {statusLabel}
@@ -120,7 +111,7 @@ export function EditableToolCode({
         <button
           type="button"
           onClick={copyCode}
-          className="rounded-lg border border-zinc-300 px-2.5 py-1 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+          className="border border-line bg-surface px-2.5 py-1 font-mono text-[11px] font-medium text-ink transition hover:border-accent hover:text-accent"
         >
           {copied ? "Copied" : "Copy"}
         </button>

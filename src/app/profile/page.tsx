@@ -1,7 +1,12 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ProfileForm } from "@/components/ProfileForm";
+import { ProfileStats } from "@/components/ProfileStats";
 import { SiteNav } from "@/components/SiteNav";
+import { CONCEPT_BY_ID, MASTERY_SKILL_POINTS } from "@/lib/concepts";
+import {
+  computeStreak,
+  waveProgressBars,
+} from "@/lib/profile-stats";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -55,12 +60,14 @@ export default async function ProfilePage() {
 
   if (!profile) {
     return (
-      <div className="flex min-h-full flex-col items-center bg-zinc-50 px-6 py-16 dark:bg-black">
-        <main className="flex w-full max-w-2xl flex-col gap-8">
+      <div className="app-shell">
+        <main className="app-main">
           <SiteNav />
-          <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-red-950 dark:border-red-900 dark:bg-red-950/40 dark:text-red-100">
+          <div className="border border-danger bg-surface-raised px-5 py-4 text-ink">
             <p className="font-medium">Could not load your profile.</p>
-            <p className="mt-1 text-sm opacity-80">Try signing out and back in.</p>
+            <p className="mt-1 text-sm text-muted">
+              Try signing out and back in.
+            </p>
           </div>
         </main>
       </div>
@@ -69,36 +76,72 @@ export default async function ProfilePage() {
 
   const needsNames = profileNeedsNames(profile);
 
+  let { data: learnedRows } = await supabase
+    .from("learned_concepts")
+    .select("concept_id, skill_points, learned_at")
+    .eq("user_id", user.id);
+
+  if (!learnedRows) {
+    const fallback = await supabase
+      .from("learned_concepts")
+      .select("concept_id, learned_at")
+      .eq("user_id", user.id);
+    learnedRows = (fallback.data ?? []).map((row) => ({
+      ...row,
+      skill_points: 0,
+    }));
+  }
+
+  const { data: practiceRows } = await supabase
+    .from("practice_attempts")
+    .select("created_at")
+    .eq("user_id", user.id);
+
+  const progress = (learnedRows ?? [])
+    .filter((row) => CONCEPT_BY_ID[row.concept_id as string])
+    .map((row) => ({
+      conceptId: row.concept_id as string,
+      skillPoints: Number(row.skill_points ?? 0),
+      learnedAt: (row.learned_at as string | null) ?? null,
+    }));
+
+  const activityIsos = [
+    ...progress.map((row) => row.learnedAt).filter(Boolean),
+    ...(practiceRows ?? []).map((row) => row.created_at as string),
+  ] as string[];
+
+  const streak = computeStreak(activityIsos);
+  const waves = waveProgressBars(progress);
+  const learnedCount = progress.length;
+  const masteredCount = progress.filter(
+    (row) => row.skillPoints >= MASTERY_SKILL_POINTS,
+  ).length;
+
   return (
-    <div className="flex min-h-full flex-col items-center bg-zinc-50 px-6 py-16 dark:bg-black">
-      <main className="flex w-full max-w-2xl flex-col gap-8">
+    <div className="app-shell">
+      <main className="app-main">
         <SiteNav />
-        <header className="flex flex-col gap-2">
-          <p className="text-sm font-medium tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
-            Account
-          </p>
-          <h1 className="text-4xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">
+        <header className="flex flex-col gap-3">
+          <h1 className="text-4xl font-semibold tracking-tight text-ink">
             Profile
           </h1>
-          <p className="text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Update your name and upload a photo. Photos go to Supabase Storage; only
-            the URL is saved on your profile row.
-          </p>
         </header>
 
-        <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
-          <ProfileForm
-            profile={profile}
-            mode={needsNames ? "complete" : "edit"}
+        <div className="lt-profile-desk">
+          <ProfileStats
+            streak={streak}
+            learnedCount={learnedCount}
+            masteredCount={masteredCount}
+            waves={waves}
           />
+          <div className="lt-ig-card">
+            <ProfileForm
+              profile={profile}
+              email={user.email ?? ""}
+              mode={needsNames ? "complete" : "edit"}
+            />
+          </div>
         </div>
-
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          Signed in as {user.email}.{" "}
-          <Link href="/library" className="underline underline-offset-2">
-            Open library
-          </Link>
-        </p>
       </main>
     </div>
   );

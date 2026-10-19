@@ -37,23 +37,32 @@ export async function updateToolCardCode(toolCardId: string, code: string) {
     return { error: "You can only edit code on cards you created." };
   }
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("tool_cards")
     .update({ code: trimmed })
     .eq("id", toolCardId)
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .select("id")
+    .maybeSingle();
 
   if (error) {
     return {
-      error: error.message.includes("policy")
+      error: error.message.includes("policy") || error.message.includes("permission")
         ? "Run supabase/tool-card-code-update.sql to enable code edits."
         : error.message,
     };
   }
 
+  if (!updated) {
+    return {
+      error:
+        "Code didn’t save. Run supabase/tool-card-code-update.sql in the Supabase SQL editor, then try again.",
+    };
+  }
+
   revalidatePath("/");
   revalidatePath("/explore");
-  revalidatePath("/library");
+  revalidatePath("/toolkit");
 
   return { error: null };
 }

@@ -33,58 +33,47 @@ export function CardClarifyForm({ toolCardId }: Props) {
   }
 
   return (
-    <div className="mt-4 border-t border-zinc-200 pt-4 dark:border-zinc-800">
-      <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
-        Still confused?
-      </p>
-      <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-        Ask a follow-up — new notes stack below; the card above stays as-is.
-      </p>
-
-      <label className="mt-3 flex flex-col gap-1.5 text-sm">
-        <span className="text-zinc-700 dark:text-zinc-300">
-          What&apos;s still unclear?
-        </span>
+    <div className="border-t border-line pt-4">
+      <label className="flex flex-col gap-1.5 text-sm">
+        <span className="sr-only">Follow-up question</span>
         <textarea
           rows={2}
           value={question}
           disabled={pending}
           onChange={(e) => setQuestion(e.target.value)}
-          placeholder="e.g. what does hiding the built-in mean?"
-          className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-zinc-950 outline-none ring-zinc-400 focus:ring-2 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+          placeholder="Ask a follow-up…"
+          className="border border-line bg-surface px-3 py-2 text-sm text-ink outline-none ring-accent focus:ring-2 disabled:opacity-60"
         />
       </label>
 
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-2 flex flex-wrap gap-2">
         <button
           type="button"
           disabled={pending || !question.trim()}
           onClick={() => submit("custom", question)}
-          className="rounded-xl bg-zinc-950 px-3 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-950"
+          className="bg-ink px-3 py-1.5 text-xs font-medium text-surface-raised transition hover:bg-accent disabled:opacity-50"
         >
-          {pending ? "Thinking…" : "Ask"}
+          {pending ? "…" : "Ask"}
         </button>
         <button
           type="button"
           disabled={pending}
           onClick={() => submit("simpler")}
-          className="rounded-xl border border-zinc-300 px-3 py-2 text-sm text-zinc-800 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200"
+          className="border border-line bg-surface px-3 py-1.5 text-xs text-ink transition hover:border-accent disabled:opacity-50"
         >
-          Say it simpler
+          Simpler
         </button>
         <button
           type="button"
           disabled={pending}
           onClick={() => submit("example")}
-          className="rounded-xl border border-zinc-300 px-3 py-2 text-sm text-zinc-800 disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200"
+          className="border border-line bg-surface px-3 py-1.5 text-xs text-ink transition hover:border-accent disabled:opacity-50"
         >
-          Another example
+          Example
         </button>
       </div>
 
-      {error ? (
-        <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>
-      ) : null}
+      {error ? <p className="mt-2 text-sm text-danger">{error}</p> : null}
     </div>
   );
 }

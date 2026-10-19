@@ -21,6 +21,9 @@ export async function generateToolCard(formData: FormData) {
   const conceptId = String(formData.get("conceptId") ?? "").trim() || null;
   const attempt = String(formData.get("attempt") ?? "").trim();
   const customHow = String(formData.get("howQuestion") ?? "").trim();
+  const discoveryPrompt = String(
+    formData.get("discoveryPrompt") ?? "",
+  ).trim();
 
   const concept = conceptId ? getConcept(conceptId) : undefined;
   const goal =
@@ -33,6 +36,10 @@ export async function generateToolCard(formData: FormData) {
   }
   if (goal.length > GOAL_MAX) {
     return { error: `Keep the question under ${GOAL_MAX} characters.` };
+  }
+  // Catalog skills with a discovery sheet must include a real attempt.
+  if (conceptId && discoveryPrompt && !attempt) {
+    return { error: "Try the discovery question before opening syntax." };
   }
 
   const { data: existingProfile } = await supabase
@@ -59,6 +66,7 @@ export async function generateToolCard(formData: FormData) {
       conceptLabel: concept?.label,
       hintSyntax: concept?.hintSyntax,
       learnerAttempt: attempt || undefined,
+      discoveryPrompt: discoveryPrompt || undefined,
     });
   } catch (error) {
     return {

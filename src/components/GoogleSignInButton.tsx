@@ -1,23 +1,53 @@
 "use client";
 
+import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-export function GoogleSignInButton() {
+type Props = {
+  onError?: (message: string) => void;
+};
+
+export function GoogleSignInButton({ onError }: Props) {
+  const [pending, setPending] = useState(false);
+
   async function signInWithGoogle() {
-    const supabase = createClient();
-    const origin = window.location.origin;
+    if (pending) return;
+    setPending(true);
+    onError?.("");
 
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        // Must be exactly /auth/callback — no other query parameters.
-        redirectTo: `${origin}/auth/callback`,
-      },
-    });
+    try {
+      const supabase = createClient();
+      const origin = window.location.origin;
 
-    if (error) {
-      console.error(error);
-      alert(error.message);
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          // Must be exactly /auth/callback — no other query parameters.
+          redirectTo: `${origin}/auth/callback`,
+          skipBrowserRedirect: true,
+        },
+      });
+
+      if (error) {
+        onError?.(error.message);
+        setPending(false);
+        return;
+      }
+
+      if (!data.url) {
+        onError?.(
+          "Google sign-in did not return a URL. Is Google enabled in Supabase Auth?",
+        );
+        setPending(false);
+        return;
+      }
+
+      window.location.assign(data.url);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Could not start Google sign-in.";
+      onError?.(message);
+      setPending(false);
     }
   }
 
@@ -25,9 +55,10 @@ export function GoogleSignInButton() {
     <button
       type="button"
       onClick={signInWithGoogle}
-      className="inline-flex items-center justify-center rounded-xl bg-zinc-950 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200"
+      disabled={pending}
+      className="lt-signon-google"
     >
-      Continue with Google
+      {pending ? "Redirecting…" : "Continue with Google"}
     </button>
   );
 }

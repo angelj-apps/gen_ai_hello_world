@@ -40,6 +40,6 @@ export async function submitToolVote(toolCardId: string, value: 1 | -1) {
 
   revalidatePath("/");
   revalidatePath("/explore");
-  revalidatePath("/library");
+  revalidatePath("/toolkit");
   return { error: null };
 }

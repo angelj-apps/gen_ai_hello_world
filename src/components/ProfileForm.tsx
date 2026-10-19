@@ -7,16 +7,15 @@ import type { Profile } from "@/lib/supabase/types";
 
 type Props = {
   profile: Profile;
+  email: string;
   mode?: "complete" | "edit";
 };
 
-export function ProfileForm({ profile, mode = "edit" }: Props) {
+export function ProfileForm({ profile, email, mode = "edit" }: Props) {
   const router = useRouter();
   const [firstName, setFirstName] = useState(profile.first_name ?? "");
-  const [lastName, setLastName] = useState(profile.last_name ?? "");
-  const [favoriteDrink, setFavoriteDrink] = useState(
-    profile.favorite_drink ?? "",
-  );
+  const lastName = profile.last_name ?? "";
+  const favoriteDrink = profile.favorite_drink ?? "";
   const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -137,39 +136,25 @@ export function ProfileForm({ profile, mode = "edit" }: Props) {
         </label>
       </div>
 
-      <label className="flex flex-col gap-1.5 text-sm">
-        <span className="font-medium text-zinc-700 dark:text-zinc-300">
-          First name
-        </span>
+      <label className="lt-username-field flex flex-col gap-1.5 text-sm">
+        <span className="font-medium">Username</span>
         <input
           required
           value={firstName}
           onChange={(event) => setFirstName(event.target.value)}
-          className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-zinc-950 outline-none ring-zinc-400 focus:ring-2 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+          placeholder="yourname"
+          autoComplete="username"
+          className="rounded-xl border px-3 py-2 outline-none"
         />
       </label>
 
-      <label className="flex flex-col gap-1.5 text-sm">
-        <span className="font-medium text-zinc-700 dark:text-zinc-300">
-          Last name
-        </span>
+      <label className="lt-email-field flex flex-col gap-1.5 text-sm">
+        <span className="font-medium">Email</span>
         <input
-          required
-          value={lastName}
-          onChange={(event) => setLastName(event.target.value)}
-          className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-zinc-950 outline-none ring-zinc-400 focus:ring-2 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
-        />
-      </label>
-
-      <label className="flex flex-col gap-1.5 text-sm">
-        <span className="font-medium text-zinc-700 dark:text-zinc-300">
-          Favorite drink (optional)
-        </span>
-        <input
-          value={favoriteDrink}
-          onChange={(event) => setFavoriteDrink(event.target.value)}
-          placeholder="Oat latte"
-          className="rounded-xl border border-zinc-300 bg-white px-3 py-2 text-zinc-950 outline-none ring-zinc-400 focus:ring-2 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-50"
+          readOnly
+          value={email}
+          tabIndex={-1}
+          className="rounded-xl border px-3 py-2 outline-none"
         />
       </label>
 
@@ -180,13 +165,19 @@ export function ProfileForm({ profile, mode = "edit" }: Props) {
         <p className="text-sm text-emerald-700 dark:text-emerald-400">{message}</p>
       ) : null}
 
-      <button
-        type="submit"
-        disabled={saving}
-        className="inline-flex items-center justify-center rounded-xl bg-zinc-950 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-60 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200"
-      >
-        {saving ? "Saving…" : "Save profile"}
-      </button>
+      <div className="lt-profile-actions">
+        <button type="submit" disabled={saving} className="lt-save">
+          {saving ? "Saving…" : "Save profile"}
+        </button>
+        <button
+          type="submit"
+          formAction="/auth/signout"
+          formMethod="post"
+          className="lt-signout"
+        >
+          Sign out
+        </button>
+      </div>
     </form>
   );
 }

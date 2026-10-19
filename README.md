@@ -26,8 +26,9 @@ Run these in the SQL editor (same project as auth):
 1. `supabase/profiles.sql` (if profiles / Google auth are not set up yet)
 2. **`supabase/little-tools.sql`** — `tool_cards`, `tool_votes`, `saved_tools`, `practice_attempts`, score trigger, RLS, seed cards
 3. **`supabase/concepts.sql`** — `learned_concepts` + optional `concept_id` / `learner_attempt` on `tool_cards`
-4. **`supabase/clarifications.sql`** — `tool_card_clarifications` for stacked “Still confused?” follow-ups
+4. **`supabase/clarifications.sql`** — `tool_card_clarifications` for stacked follow-ups
 5. **`supabase/tool-card-code-update.sql`** — allow updating `code` on your own tool cards (auto-save in UI)
+6. **`supabase/skill-points.sql`** — `skill_points` on `learned_concepts` + update policy
 
 Concept definitions and adjacency live in `src/lib/concepts.ts` (20 beginner concepts).
 
@@ -49,8 +50,9 @@ Concept definitions and adjacency live in `src/lib/concepts.ts` (20 beginner con
 | --- | --- |
 | `/` | Capability horizon → How do I …? → attempt → syntax card |
 | `/explore` | Ranked shared feed (syntax collapsed by default) |
-| `/library` | Saved tools + search (syntax collapsed by default) |
-| `/practice` | Combine 1–2 saved tools; hint then reveal solution |
+| `/toolkit` | Grid of learned skills + skillpoints; tap tile for card |
+| `/practice` | Select skills → generate problem → grade → skillpoints |
+| `/library` | Redirects to `/toolkit` |
 | `/login` | Google sign-in |
 | `/auth/callback` | OAuth code exchange |
 | `/profile` | Name + photo |
@@ -59,5 +61,5 @@ Concept definitions and adjacency live in `src/lib/concepts.ts` (20 beginner con
 
 1. Push to GitHub / Vercel.
 2. Set the same env vars on Vercel (including `OPENROUTER_API_KEY`).
-3. Run `supabase/little-tools.sql`, `supabase/concepts.sql`, and `supabase/clarifications.sql` on production.
+3. Run SQL migrations on production (`little-tools`, `concepts`, `clarifications`, `tool-card-code-update`, `skill-points`).
 4. Turn off Deployment Protection so Incognito works if required for grading.

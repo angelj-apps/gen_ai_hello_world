@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { NavLinks } from "@/components/NavLinks";
 import { createClient } from "@/lib/supabase/server";
 import { hasSupabaseEnv } from "@/lib/supabase/env";
 
@@ -18,49 +19,29 @@ export async function SiteNav() {
   }
 
   return (
-    <nav className="flex w-full max-w-2xl flex-wrap items-center justify-between gap-3 border-b border-zinc-200 pb-4 dark:border-zinc-800">
-      <div className="flex flex-wrap items-center gap-4 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-        <Link href="/" className="hover:text-zinc-950 dark:hover:text-zinc-50">
-          Learn
+    <nav className="flex w-full flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
+        <Link href="/" className="group flex items-baseline gap-2">
+          <span className="font-mono text-[11px] font-medium tracking-[0.14em] text-accent uppercase">
+            lt
+          </span>
+          <span className="text-lg font-semibold tracking-tight text-ink transition-colors group-hover:text-accent">
+            Little Tools
+          </span>
         </Link>
-        <Link
-          href="/explore"
-          className="hover:text-zinc-950 dark:hover:text-zinc-50"
-        >
-          Explore
-        </Link>
-        <Link
-          href="/library"
-          className="hover:text-zinc-950 dark:hover:text-zinc-50"
-        >
-          Library
-        </Link>
-        <Link
-          href="/practice"
-          className="hover:text-zinc-950 dark:hover:text-zinc-50"
-        >
-          Practice
-        </Link>
-        {email ? (
-          <Link
-            href="/profile"
-            className="hover:text-zinc-950 dark:hover:text-zinc-50"
-          >
-            Profile
-          </Link>
-        ) : null}
+        <NavLinks showProfile={Boolean(email)} />
       </div>
 
       <div className="flex items-center gap-3 text-sm">
         {email ? (
           <>
-            <span className="hidden max-w-[12rem] truncate text-zinc-500 sm:inline dark:text-zinc-400">
+            <span className="hidden max-w-[12rem] truncate font-mono text-xs text-muted sm:inline">
               {email}
             </span>
             <form action="/auth/signout" method="post">
               <button
                 type="submit"
-                className="rounded-lg border border-zinc-300 px-3 py-1.5 text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-900"
+                className="rounded-md border border-line bg-surface-raised px-3 py-1.5 text-ink transition hover:border-accent hover:text-accent"
               >
                 Sign out
               </button>
@@ -69,7 +50,7 @@ export async function SiteNav() {
         ) : (
           <Link
             href="/login"
-            className="rounded-lg bg-zinc-950 px-3 py-1.5 text-white transition hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200"
+            className="rounded-md bg-ink px-3 py-1.5 font-medium text-surface-raised transition hover:bg-accent"
           >
             Sign in
           </Link>
