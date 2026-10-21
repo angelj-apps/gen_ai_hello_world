@@ -206,7 +206,7 @@ export function PracticeClient({ skills }: Props) {
           <h2 className="text-2xl font-bold tracking-tight text-ink">
             What do you want to practice?
           </h2>
-          <p className="mt-1.5 text-sm leading-6 text-muted">
+          <p className="sr-only">
             Tap skills from your toolkit, then start a short challenge — earn a
             skillpoint when you get it right.
           </p>

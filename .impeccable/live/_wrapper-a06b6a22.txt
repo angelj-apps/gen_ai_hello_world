@@ -1,0 +1,80 @@
+      <div data-impeccable-variants="a06b6a22" data-impeccable-variant-count="3" style={{ display: "contents" }}>
+        {/* impeccable-variants-start a06b6a22 */}
+        {/* Original */}
+        <div data-impeccable-variant="original">
+          <main className={`app-main ${focusUnlock ? "max-w-3xl" : ""}`}>
+            <SiteNav />
+            {focusUnlock ? (
+              <header className="flex flex-col gap-2">
+                <p className="font-mono text-[11px] font-bold tracking-[0.14em] text-accent uppercase">
+                  Nice unlock
+                </p>
+                <h1 className="text-3xl font-bold tracking-tight text-ink">
+                  You earned a tool
+                </h1>
+              </header>
+            ) : (
+              <header className="flex flex-col gap-3">
+                <p className="font-mono text-[11px] font-bold tracking-[0.14em] text-accent uppercase">
+                  Daily quest
+                </p>
+                <h1 className="text-4xl font-bold tracking-tight text-ink sm:text-5xl">
+                  Learn something tiny
+                </h1>
+                <Link
+                  href="/toolkit#path"
+                  className="inline-flex w-fit rounded-full bg-accent-soft px-3 py-1.5 text-sm font-bold text-accent transition hover:bg-accent hover:text-surface-raised"
+                >
+                  See your path →
+                </Link>
+              </header>
+            )}
+
+            {needsProfile ? (
+              <div className="border border-accent bg-accent-soft px-5 py-4 text-ink">
+                <p className="font-medium">Welcome — finish your profile</p>
+                <p className="mt-1 text-sm text-muted">
+                  Your first or last name is still empty.{" "}
+                  <Link
+                    href="/profile"
+                    className="text-accent underline underline-offset-2"
+                  >
+                    Add your name
+                  </Link>
+                  .
+                </p>
+              </div>
+            ) : null}
+
+            {focusUnlock && latestCard ? (
+              <section className="studio-fade-up w-full">
+                <ToolCardView
+                  card={latestCard}
+                  myVote={myVote}
+                  saved={saved}
+                  clarifications={cardClarifications}
+                  canClarify={canClarifyCard(latestCard.user_id, user.id)}
+                  canEditCode={canEditToolCardCode(latestCard.user_id, user.id)}
+                  funStyle
+                  showQuestFooter
+                  nextSkill={
+                    horizon[0]
+                      ? { id: horizon[0].id, label: horizon[0].label }
+                      : null
+                  }
+                />
+              </section>
+            ) : (
+              <div id="learn" className="scroll-mt-6">
+                <AttemptFirstLearn
+                  horizon={horizon}
+                  learnedCount={learnedCount}
+                  startConceptId={params.start ?? null}
+                />
+              </div>
+            )}
+          </main>
+        </div>
+        {/* Variants: insert below this line */}
+        {/* impeccable-variants-end a06b6a22 */}
+      </div>

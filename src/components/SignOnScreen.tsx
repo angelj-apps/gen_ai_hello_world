@@ -26,8 +26,8 @@ export function SignOnScreen({ error = false }: Props) {
         </Link>
 
         <p className="lt-signon-lede">
-          Atomic Python skills for interview prep — try first, then unlock the
-          syntax.
+          Python skills for interview prep! Ready to unlock the
+          syntax?
         </p>
 
         {showError ? (

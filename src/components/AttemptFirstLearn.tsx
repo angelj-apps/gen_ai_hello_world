@@ -198,7 +198,7 @@ export function AttemptFirstLearn({
     step === "horizon" ? "pick" : step === "revealing" ? "learn" : "try";
 
   return (
-    <div className="learn-fun-shell flex flex-col gap-6">
+    <div className="learn-fun-shell learn-fun-shell--tiles flex flex-col gap-6">
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <StepDots active={activeStep} />
@@ -224,10 +224,6 @@ export function AttemptFirstLearn({
             <h2 className="text-2xl font-bold tracking-tight text-ink">
               What do you want to unlock?
             </h2>
-            <p className="mt-1.5 text-sm leading-6 text-muted">
-              Tap a skill, try it yourself, then unlock the syntax — little wins
-              stack fast.
-            </p>
           </div>
 
           <ul className="grid gap-2.5">

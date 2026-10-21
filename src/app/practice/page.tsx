@@ -76,36 +76,38 @@ export default async function PracticePage() {
   });
 
   return (
-    <div className="app-shell">
-      <main className="app-main">
-        <SiteNav />
-        <header className="flex flex-col gap-3">
-          <h1 className="text-4xl font-semibold tracking-tight text-ink">
-            Practice
-          </h1>
-          <p className="max-w-xl text-lg leading-8 text-muted">
-            Short challenges from skills you already unlocked — stack points
-            when you solve them.
-          </p>
-        </header>
+    <div className="app-shell app-shell--noscroll-practice">
 
-        {skills.length === 0 ? (
-          <div className="learn-fun-shell text-center">
-            <p className="text-2xl font-bold tracking-tight text-ink">
-              Unlock a skill first
-            </p>
-            <p className="mt-2 text-muted">
-              Practice uses tools from your toolkit. Learn one, then come back
-              for a challenge.
-            </p>
-            <Link href="/" className="learn-fun-cta mt-5 inline-flex">
-              Open Learn
-            </Link>
-          </div>
-        ) : (
-          <PracticeClient skills={skills} />
-        )}
-      </main>
+          <main className="app-main">
+            <SiteNav />
+            <header className="flex flex-col gap-3">
+              <h1 className="text-4xl font-semibold tracking-tight text-ink">
+                Practice
+              </h1>
+              <p className="sr-only">
+                Short challenges from skills you already unlocked — stack points
+                when you solve them.
+              </p>
+            </header>
+
+            {skills.length === 0 ? (
+              <div className="learn-fun-shell text-center">
+                <p className="text-2xl font-bold tracking-tight text-ink">
+                  Unlock a skill first
+                </p>
+                <p className="mt-2 text-muted">
+                  Practice uses tools from your toolkit. Learn one, then come back
+                  for a challenge.
+                </p>
+                <Link href="/" className="learn-fun-cta mt-5 inline-flex">
+                  Open Learn
+                </Link>
+              </div>
+            ) : (
+              <PracticeClient skills={skills} />
+            )}
+          </main>
+
     </div>
   );
 }

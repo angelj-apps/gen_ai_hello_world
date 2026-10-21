@@ -76,6 +76,60 @@ body {
   gap: 1.75rem;
 }
 
+/* Learn: no visible page scrollbar — viewport-locked, inner scroll hidden */
+.app-shell--noscroll {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  padding: 1rem 1.25rem;
+  scrollbar-width: none;
+}
+
+.app-shell--noscroll::-webkit-scrollbar {
+  display: none;
+}
+
+.app-shell--noscroll .app-main {
+  height: 100%;
+  min-height: 0;
+}
+
+.app-shell--noscroll #learn,
+.app-shell--noscroll section {
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.app-shell--noscroll #learn::-webkit-scrollbar,
+.app-shell--noscroll section::-webkit-scrollbar {
+  display: none;
+}
+
+/* Practice: viewport-locked, no visible scrollbar (fit 0.7) */
+.app-shell--noscroll-practice {
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  padding-top: 0.93rem;
+  padding-bottom: 0.75rem;
+  scrollbar-width: none;
+}
+
+.app-shell--noscroll-practice::-webkit-scrollbar {
+  display: none;
+}
+
+.app-shell--noscroll-practice .app-main {
+  gap: 0.8rem;
+  min-height: 0;
+}
+
+.app-shell--noscroll-practice h1 {
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  line-height: 1.1;
+}
+
 /* Related panels share one bordered workbench */
 .studio-bench {
   border: 1px solid var(--line);
@@ -674,6 +728,43 @@ body {
   border-radius: inherit;
   background: linear-gradient(90deg, var(--accent), #14b8a6);
   transition: width 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+
+/* Compact two-column skill tiles (horizon pick) */
+.learn-fun-shell--tiles {
+  gap: 0.85rem;
+  padding: 1.1rem 1.1rem 1.2rem;
+}
+
+.learn-fun-shell--tiles ul.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+}
+
+@media (min-width: 640px) {
+  .learn-fun-shell--tiles ul.grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.learn-fun-shell--tiles .learn-fun-skill {
+  padding: 0.55rem 0.75rem;
+  height: 100%;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+
+.learn-fun-shell--tiles .learn-fun-skill > span:first-child {
+  margin-top: 0.1rem;
+  height: 1.75rem;
+  width: 1.75rem;
+  font-size: 0.65rem;
+}
+
+.learn-fun-shell--tiles h2 {
+  font-size: 1.35rem;
 }
 
 .learn-fun-skill {
